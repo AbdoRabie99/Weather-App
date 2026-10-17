@@ -1,69 +1,84 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect } from "react";
+import Header from "./components/Header";
+import Hero from "./components/Hero";
+import { searchCity, getWeather, getAirQuality } from "./lib/weather";
+import TempToggle from "./components/TempToggle";
+import AirQuality from "./components/AirQuality";
+import Sun_Moon from "./components/Sun_Moon";
 
 export default function Home() {
+  const [unit, setUnit] = useState("C");
+  const [cityData, setCityData] = useState(null);
+  const [weatherData, setWeatherData] = useState(null);
+  const [airQualityData, setAirQualityData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    handleSearch("Cairo");
+  }, []);
+
+  async function handleSearch(city) {
+    if (!city.trim()) {
+      setError("Please enter a city name.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const cityResult = await searchCity(city.trim());
+
+      const [weatherResult, airQualityResult] = await Promise.all([
+        getWeather(cityResult.latitude, cityResult.longitude),
+        getAirQuality(cityResult.latitude, cityResult.longitude),
+      ]);
+
+      setCityData(cityResult);
+      setWeatherData(weatherResult);
+      setAirQualityData(airQualityResult);
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err.message === "City not found"
+          ? "City not found. Please try another city."
+          : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="relative isolate min-h-screen overflow-hidden text-white">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_450px_at_13%_10%,rgba(12,52,80,0.7),rgba(12,52,80,0)_100%)]"
+      />
+
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-6">
+        <Header
+          cityData={cityData}
+          onSearch={handleSearch}
+          loading={loading}
+          error={error}
+          unit={unit}
+          setUnit={setUnit}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.js
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+
+        <Hero weatherData={weatherData} unit={unit} />
+
+        <TempToggle weatherData={weatherData} unit={unit} />
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <AirQuality airQualityData={airQualityData} />
+          <Sun_Moon weatherData={weatherData} />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
